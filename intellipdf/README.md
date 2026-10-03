@@ -3,6 +3,8 @@
 **AI-Powered Personalized Learning and Exam Preparation System**
 *Upload any subject PDF → Understand → Retrieve → Generate*
 
+[![Deploy to Streamlit](https://static.streamlit.io/badges/deploy_button.html?repo=varanalagesh19-dot/atlasAI&branch=main&primaryColor=1e3a8a)](https://share.streamlit.io/deploy?repo=varanalagesh19-dot/atlasAI&branch=main&primaryColor=1e3a8a)
+
 Upload a lecture PDF (ML, NLP, DBMS, Networks, …) and IntelliPDF turns it into an
 exam-preparation platform: **mark-wise answers**, **source-grounded Q&A**,
 **auto-generated quizzes**, a **study plan built around your exam date**,
