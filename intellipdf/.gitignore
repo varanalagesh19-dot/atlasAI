@@ -1,0 +1,24 @@
+# secrets
+.env
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# generated data
+backend/data/uploads/*
+backend/data/vector_db/*
+backend/data/*.db
+!backend/data/uploads/.gitkeep
+!backend/data/vector_db/.gitkeep
+!backend/data/.gitkeep
+
+# evaluation output (squad_results.json is committed as evidence for the README)
+
+# misc
+.DS_Store
+*.log
