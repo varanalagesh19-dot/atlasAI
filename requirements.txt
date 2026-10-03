@@ -1,0 +1,15 @@
+# Repository-root requirements file.
+#
+# Streamlit Community Cloud always installs "requirements.txt" from the ROOT of
+# the repository, so it cannot see intellipdf/requirements.txt on its own.
+# This shim forwards to it, which lets the IntelliPDF app be deployed straight
+# from this repository.
+#
+# To deploy:
+#   share.streamlit.io -> Deploy from GitHub -> varanalagesh19-dot/atlasAI
+#   Main file path:  intellipdf/frontend/app.py
+#
+# Note: this file is only for the IntelliPDF deployment. The atlas_core07
+# project keeps its own dependencies in atlas_core07/backend/requirements.txt.
+
+-r intellipdf/requirements.txt
