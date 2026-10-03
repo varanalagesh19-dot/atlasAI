@@ -65,7 +65,11 @@ intellipdf/
 │   └── conftest.py
 ├── requirements.txt
 ├── .env.example
+├── .gitattributes          LF endings so run.sh works on Linux
+├── .streamlit/config.toml  Streamlit theme + server settings
+├── .python-version         3.12 (Streamlit Community Cloud)
 ├── run.sh
+├── DEPLOY.md               ☁️ Streamlit Community Cloud guide
 └── README.md
 ```
 
@@ -459,11 +463,40 @@ python tests/e2e_check.py sample_features.pdf   # all 10 flows against a live se
 | `UPLOAD_PATH` | `./backend/data/uploads` | Stored PDFs |
 | `DB_PATH` | `./backend/data/intellipdf.db` | SQLite database |
 | `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Embeddings |
+| `EMBEDDING_BACKEND` | `auto` | `auto` / `sentence-transformers` / `hashing` (no torch) |
+| `INTELLIPDF_INPROCESS` | auto | Force the single-process transport |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `150` | LangChain splitter |
 | `TOP_K` | `5` | Chunks retrieved |
 | `SIMILARITY_THRESHOLD` | `0.12` | Abstain below this score |
 | `HYBRID_DENSE_WEIGHT` / `HYBRID_LEXICAL_WEIGHT` | `0.6` / `0.4` | Retrieval mix |
 | `MAX_UPLOAD_MB` | `50` | Upload limit |
+---
+
+## ☁️ Deploy to Streamlit Community Cloud (free)
+
+Full step-by-step guide: **[DEPLOY.md](DEPLOY.md)**.
+
+IntelliPDF runs as a **single process** on Cloud - the UI mounts the FastAPI app
+in-process via [frontend/api_client.py](frontend/api_client.py), so no second
+server is needed. Locally nothing changes: with the API running it still uses
+HTTP, and it falls back to in-process automatically if the API is down.
+
+```bash
+# 1. push to a repo of its own
+cd intellipdf && git init -b main && git add . && git commit -m "Add IntelliPDF"
+git remote add origin https://github.com/<you>/<repo>.git && git push -u origin main
+
+# 2. share.streamlit.io -> Deploy from GitHub
+#    Main file path: frontend/app.py
+
+# 3. App -> Settings -> Secrets
+GROQ_API_KEY = "gsk_..."
+EMBEDDING_BACKEND = "hashing"    # keeps RAM under the ~1 GB Cloud limit
+```
+
+> **Cloud caveats:** no persistent disk (uploads/FAISS/SQLite are wiped on every
+> redeploy), and the `🔗 Open PDF at page X` deep link points at localhost and is
+> inert there — page numbers and snippets still render.
 
 ---
 

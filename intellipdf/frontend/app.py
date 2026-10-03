@@ -1,11 +1,16 @@
 """IntelliPDF - Streamlit user interface (single file, eight tabs).
 
-Run with::
+Run locally with the API on a second process::
 
+    uvicorn backend.main:app --port 8000
     streamlit run frontend/app.py --server.port 8501
 
-The UI talks to the FastAPI backend over HTTP (``API_URL``).  If the backend is
-down, the Upload tab shows a clear message instead of a stack trace.
+Run as a single process (Streamlit Community Cloud, Render, a single VPS)::
+
+    streamlit run frontend/app.py
+
+In that case the UI calls the FastAPI app in-process - see
+``frontend/api_client.py`` - so no second server is required.
 """
 
 from __future__ import annotations
@@ -17,14 +22,39 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import requests
 import streamlit as st
 
 # Allow running as `streamlit run frontend/app.py` from the project root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# Streamlit Community Cloud keeps secrets in st.secrets, not os.environ, so
+# mirror them before the backend config module reads the environment.
+SECRET_KEYS = (
+    "GROQ_API_KEY",
+    "GEMINI_API_KEY",
+    "GROQ_MODEL",
+    "GEMINI_MODEL",
+    "OLLAMA_URL",
+    "OLLAMA_MODEL",
+    "DEFAULT_LLM",
+    "EMBEDDING_BACKEND",
+    "EMBEDDING_MODEL",
+    "SIMILARITY_THRESHOLD",
+    "TOP_K",
+    "HYBRID_DENSE_WEIGHT",
+    "HYBRID_LEXICAL_WEIGHT",
+    "MAX_UPLOAD_MB",
+)
+try:
+    for _key in SECRET_KEYS:
+        if _key not in os.environ and _key in st.secrets:
+            os.environ[_key] = str(st.secrets[_key])
+except Exception:  # noqa: BLE001 - no secrets configured is normal locally
+    pass
+
 from backend.services.mark_wise import MARK_TYPES, marks_distribution  # noqa: E402
 from backend.utils.language import LANGUAGE_LABELS  # noqa: E402
+from frontend.api_client import get_transport  # noqa: E402
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000").rstrip("/")
 
@@ -100,15 +130,21 @@ st.markdown(
 
 # ── API helpers ──────────────────────────────────────────────────────────
 def api(method: str, path: str, **kwargs: Any) -> Any:
-    """Call the backend and return parsed JSON, raising ``RuntimeError``."""
-    url = f"{API_URL}{path}"
+    """Call the backend and return parsed JSON, raising ``RuntimeError``.
+
+    Works over HTTP when a separate API server is running, and in-process on
+    single-process deployments (Streamlit Community Cloud).
+    """
+    transport = get_transport()
     try:
-        response = requests.request(method, url, timeout=600, **kwargs)
-    except requests.RequestException as exc:
-        raise RuntimeError(
-            f"Cannot reach the IntelliPDF API at {API_URL}. "
-            f"Start it with: uvicorn backend.main:app --port 8000"
-        ) from exc
+        response = transport.request(method, path, **kwargs)
+    except Exception as exc:  # noqa: BLE001 - surfaced in the UI
+        if transport.mode == "http":
+            raise RuntimeError(
+                f"Cannot reach the IntelliPDF API at {API_URL}. "
+                "Start it with: uvicorn backend.main:app --port 8000"
+            ) from exc
+        raise RuntimeError(f"IntelliPDF request failed: {exc}") from exc
     if response.status_code >= 400:
         detail = response.text
         try:
@@ -123,7 +159,10 @@ def api(method: str, path: str, **kwargs: Any) -> Any:
 def fetch_health() -> dict[str, Any] | None:
     """Return ``/health`` or ``None`` when the backend is unreachable."""
     try:
-        return requests.get(f"{API_URL}/health", timeout=5).json()
+        transport = get_transport()
+        if not transport.reachable():
+            return None
+        return transport.request("GET", "/health", timeout=10).json()
     except Exception:  # noqa: BLE001
         return None
 
@@ -157,6 +196,7 @@ with st.sidebar:
         services = health["services"]
         st.success("API online", icon="✅")
         st.caption(
+            f"Mode: `{'in-process' if get_transport().mode != 'http' else 'HTTP'}` · "
             f"Embeddings: `{services['embedder']['model']}` · "
             f"LLM: `{services['llm']['active']}`"
         )

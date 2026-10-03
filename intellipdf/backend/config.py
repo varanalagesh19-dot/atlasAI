@@ -98,6 +98,10 @@ LLM_TIMEOUT_SECONDS: Final[int] = _env_int("LLM_TIMEOUT_SECONDS", 90)
 EMBEDDING_MODEL: Final[str] = _env_str(
     "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
 )
+#: Which embedder to use: ``auto`` (sentence-transformers, fall back on error),
+#: ``sentence-transformers`` (force MiniLM) or ``hashing`` (no torch, ~50 MB RAM
+#: instead of ~1 GB - the safe choice on 1 GB hosts such as Streamlit Cloud).
+EMBEDDING_BACKEND: Final[str] = _env_str("EMBEDDING_BACKEND", "auto").lower()
 CHUNK_SIZE: Final[int] = _env_int("CHUNK_SIZE", 800)
 CHUNK_OVERLAP: Final[int] = _env_int("CHUNK_OVERLAP", 150)
 TOP_K: Final[int] = _env_int("TOP_K", 5)

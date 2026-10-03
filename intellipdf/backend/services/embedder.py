@@ -20,7 +20,7 @@ from typing import Final
 
 import numpy as np
 
-from backend.config import EMBED_BATCH_SIZE, EMBEDDING_MODEL
+from backend.config import EMBED_BATCH_SIZE, EMBEDDING_BACKEND, EMBEDDING_MODEL
 
 LOGGER = logging.getLogger(__name__)
 
@@ -112,11 +112,20 @@ class Embedder:
         return self._impl.dim if self._impl else EMBED_DIM
 
     def load(self) -> None:
-        """Load the model once; fall back to hashing if anything fails."""
+        """Load the model once; fall back to hashing if anything fails.
+
+        ``EMBEDDING_BACKEND=hashing`` skips torch entirely (important on 1 GB
+        hosts); ``=sentence-transformers`` forces MiniLM; the default ``auto``
+        tries MiniLM and degrades to hashing if it cannot be loaded.
+        """
         if self._impl is not None:
             return
         with self._lock:
             if self._impl is not None:
+                return
+            if EMBEDDING_BACKEND == "hashing":
+                LOGGER.info("EMBEDDING_BACKEND=hashing - using offline embeddings.")
+                self._impl = HashingEmbedder()
                 return
             try:
                 LOGGER.info("Loading embedding model %s ...", EMBEDDING_MODEL)
@@ -127,6 +136,8 @@ class Embedder:
                     self._impl.dim,
                 )
             except Exception as exc:  # noqa: BLE001 - any failure -> fallback
+                if EMBEDDING_BACKEND == "sentence-transformers":
+                    raise
                 LOGGER.warning(
                     "sentence-transformers unavailable (%s). "
                     "Falling back to offline hashing embeddings.",
