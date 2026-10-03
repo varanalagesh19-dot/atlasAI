@@ -32,6 +32,9 @@ requests
 pydantic
 python-dotenv
 
+# ── In-process API transport (frontend/api_client.py on Streamlit Cloud) ──
+httpx
+
 # ── Frontend analytics ──────────────────────────────────────────────
 pandas
 plotly

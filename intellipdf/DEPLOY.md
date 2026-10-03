@@ -78,10 +78,15 @@ Without any key the app still runs in offline extractive mode.
 SCC's free tier gives roughly **1 GB of RAM**. `sentence-transformers` pulls in
 torch (~800 MB of RAM on import), which can exceed that.
 
-| Setup | RAM | Retrieval quality |
-|---|---|---|
-| `EMBEDDING_BACKEND = "auto"` (default) | ~1.2 GB — **may be killed** | best (MiniLM semantics) |
-| `EMBEDDING_BACKEND = "hashing"` | ~250 MB | lexical only |
+Measured on this project (`INTELLIPDF_INPROCESS=1`, upload + ask + abstention):
+
+| Setup | Startup | Python heap peak | torch imported | Retrieval quality |
+|---|---|---|---|---|
+| `EMBEDDING_BACKEND = "auto"` (default) | 21.8 s | ~1 GB | yes | best (MiniLM semantics) |
+| `EMBEDDING_BACKEND = "hashing"` | 7.1 s | **49 MB** | **no** | lexical only |
+
+Both paths answered correctly and abstained on an off-topic question; the
+hashing path is the one to use on a ~1 GB host.
 
 Set the secret to `"hashing"` if the app crashes on boot. Everything still works
 — retrieval switches from dense cosine to hashed n-gram overlap, and the
